@@ -1,0 +1,50 @@
+#!/usr/bin/bash
+# Set backlight dependant on power type.
+
+# Root check
+if (( $EUID )); then
+    echo "Root permissions required."
+    exit 1
+fi
+
+source /etc/default/power-backlight.conf
+
+# Get power state (from TLP and pm-utils' on_ac_power).
+get_power_state () {  # rc: 0=ac, 1=battery
+		local psrc
+		local rc=1 # battery is default when no ac is available
+
+		for psrc in /sys/class/power_supply/*; do
+    		if [ -d "$psrc" ] && [ -r "$psrc/type" ] ; then
+        		if [ "$(cat $psrc/type 2> /dev/null)" = "Mains" ]; then
+                if [ -r "$psrc/online" ]; then
+                    if [ "$(cat $psrc/online 2> /dev/null)" = "1" ]; then
+                        rc=0
+                        break
+                    fi
+                fi
+            fi
+        fi
+    done
+
+    return $rc
+}
+
+get_power_state
+pwrmode=$?
+
+for screen in /sys/class/backlight/*; do
+    # brightness +1 as 0 is being counted as a value, needed to calculate
+    brightmax=$(( $(<"$screen"/max_brightness) + 1 ))
+    if   [ "$pwrmode" = 0 ]; then
+        brightvar=$(( $SCREEN_BRIGHTNESS_ON_AC + 1 ))
+        brightset=$(( $brightmax * $brightvar / 10 - 1 ))
+    elif [ "$pwrmode" = 1 ]; then
+        brightvar=$(( $SCREEN_BRIGHTNESS_ON_BAT + 1 ))
+        brightset=$(( $brightmax * $brightvar / 10 - 1 ))
+    fi
+    echo "$brightset" > "$screen"/brightness
+done
+}
+
+# vim: set ft=sh ts=4 sw=4 et:
