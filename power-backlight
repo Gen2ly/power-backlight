@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-# Set screen backlight brightness dependant on power source type.
+# Set screen backlight brightness dependent on power source type.
 
 # Root check
 if (( $EUID )); then

@@ -1,6 +1,6 @@
 ### Description
 
-Set screen backlight brightness dependant on power source type.  Should work on most computer types.
+Set screen backlight brightness dependent on power source type.  Should work on most computer types.
 
 ### Usage
 
