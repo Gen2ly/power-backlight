@@ -45,6 +45,5 @@ for screen in /sys/class/backlight/*; do
     fi
     echo "$brightset" > "$screen"/brightness
 done
-}
 
 # vim: set ft=sh ts=4 sw=4 et:
