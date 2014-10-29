@@ -1,49 +1,42 @@
 #!/usr/bin/bash
-# Set screen backlight brightness dependent on power source type.
+# Set screen backlight brightness for power source type.
 
-# Root check
-if (( $EUID )); then
-    echo "Root permissions required."
-    exit 1
-fi
+# Usage
+usage () {
+  echo "${0##*/} [-a,--ac] [-b,--bat] - set screen backlight for power type."
+} ; [ $# -eq 0 -o $# -gt 1 ] && usage && exit
+
+# Root test
+root_test () {
+  if (( $EUID )); then
+      echo "Root permissions required."
+      return 1
+  fi
+}
 
 source /etc/default/power-backlight.conf
 
-# Get power state (from TLP and pm-utils' on_ac_power).
-get_power_state () {  # rc: 0=ac, 1=battery
-		local psrc
-		local rc=1 # battery is default when no ac is available
-
-		for psrc in /sys/class/power_supply/*; do
-    		if [ -d "$psrc" ] && [ -r "$psrc/type" ] ; then
-        		if [ "$(cat $psrc/type 2> /dev/null)" = "Mains" ]; then
-                if [ -r "$psrc/online" ]; then
-                    if [ "$(cat $psrc/online 2> /dev/null)" = "1" ]; then
-                        rc=0
-                        break
-                    fi
-                fi
-            fi
-        fi
-    done
-
-    return $rc
-}
-
-get_power_state
-pwrmode=$?
-
-for screen in /sys/class/backlight/*; do
-    # brightness +1 as 0 is being counted as a value, needed to calculate
-    brightmax=$(( $(<"$screen"/max_brightness) + 1 ))
-    if   [ "$pwrmode" = 0 ]; then
-        brightvar=$(( $SCREEN_BRIGHTNESS_ON_AC + 1 ))
-        brightset=$(( $brightmax * $brightvar / 10 - 1 ))
-    elif [ "$pwrmode" = 1 ]; then
-        brightvar=$(( $SCREEN_BRIGHTNESS_ON_BAT + 1 ))
-        brightset=$(( $brightmax * $brightvar / 10 - 1 ))
-    fi
-    echo "$brightset" > "$screen"/brightness
-done
+case $1 in
+  -a | --ac ) 
+    root_test || exit 1
+    for screen in /sys/class/backlight/*; do
+      # brightness +1 as 0 is being counted as a value, needed to calculate
+      brightmax=$(( $(<"$screen"/max_brightness) + 1 ))
+      brightvar=$(( $SCREEN_BRIGHTNESS_ON_AC + 1 ))
+      brightset=$(( $brightmax * $brightvar / 10 - 1 ))
+      echo "$brightset" > "$screen"/brightness
+    done ;;
+  -b | --bat )
+    root_test || exit 1
+    for screen in /sys/class/backlight/*; do
+      # brightness +1 as 0 is being counted as a value, needed to calculate
+      brightmax=$(( $(<"$screen"/max_brightness) + 1 ))
+      brightvar=$(( $SCREEN_BRIGHTNESS_ON_BAT + 1 ))
+      brightset=$(( $brightmax * $brightvar / 10 - 1 ))
+      echo "$brightset" > "$screen"/brightness
+    done ;;
+  * )
+    usage && exit 1 
+esac
 
 # vim: set ft=sh ts=4 sw=4 et:
